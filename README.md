@@ -10,4 +10,6 @@ Patch changes for the issue is opened as [PR](https://github.com/i18next/next-i1
 
 ## See [patched version](https://github.com/i18next/next-i18next/pull/2226)
 
-Checkout branch `patched` and run `yarn dev` to see the patched version.
+1. Checkout branch `patched`.
+2. Re-run npm install
+3. Run `yarn dev` to see the patched version.
