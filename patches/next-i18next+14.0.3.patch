@@ -1,5 +1,5 @@
 diff --git a/node_modules/next-i18next/dist/commonjs/appWithTranslation.js b/node_modules/next-i18next/dist/commonjs/appWithTranslation.js
-index c09e41a..4e9fea6 100644
+index c09e41a..950824e 100644
 --- a/node_modules/next-i18next/dist/commonjs/appWithTranslation.js
 +++ b/node_modules/next-i18next/dist/commonjs/appWithTranslation.js
 @@ -1,6 +1,5 @@
@@ -9,26 +9,111 @@ index c09e41a..4e9fea6 100644
  require("core-js/modules/es.symbol.js");
  require("core-js/modules/es.array.filter.js");
  require("core-js/modules/es.object.to-string.js");
-@@ -40,6 +39,7 @@ Object.defineProperty(exports, "withTranslation", {
+@@ -38,6 +37,7 @@ Object.defineProperty(exports, "withTranslation", {
+     return _reactI18next.withTranslation;
+   }
  });
++require("core-js/modules/es.object.keys.js");
  var _extends2 = _interopRequireDefault(require("@babel/runtime/helpers/extends"));
  var _defineProperty2 = _interopRequireDefault(require("@babel/runtime/helpers/defineProperty"));
-+require("core-js/modules/es.object.keys.js");
  var _react = _interopRequireWildcard(require("react"));
- var _hoistNonReactStatics = _interopRequireDefault(require("hoist-non-react-statics"));
+@@ -45,6 +45,7 @@ var _hoistNonReactStatics = _interopRequireDefault(require("hoist-non-react-stat
  var _reactI18next = require("react-i18next");
-@@ -60,6 +60,7 @@ var appWithTranslation = function appWithTranslation(WrappedComponent) {
+ var _createConfig = require("./config/createConfig");
+ var _createClient = _interopRequireDefault(require("./createClient"));
++var _utils = require("./utils");
+ function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function _getRequireWildcardCache(nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
+ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || _typeof(obj) !== "object" && typeof obj !== "function") { return { "default": obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj["default"] = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+ var __jsx = _react["default"].createElement;
+@@ -60,38 +61,73 @@ var appWithTranslation = function appWithTranslation(WrappedComponent) {
        _nextI18Next = _ref._nextI18Next; // pageProps may be undefined on strange setups, i.e. https://github.com/i18next/next-i18next/issues/2109
      var locale = (_nextI18Next$initialL = _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.initialLocale) !== null && _nextI18Next$initialL !== void 0 ? _nextI18Next$initialL : props === null || props === void 0 ? void 0 : (_props$router = props.router) === null || _props$router === void 0 ? void 0 : _props$router.locale;
      var ns = _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.ns;
 +    var instanceRef = (0, _react.useRef)(null);
  
-     // Memoize the instance and only re-initialize when either:
-     // 1. The route changes (non-shallowly)
-@@ -82,16 +83,31 @@ var appWithTranslation = function appWithTranslation(WrappedComponent) {
-         initialI18nStore = _ref2.initialI18nStore;
-       var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
-       if (!locale) locale = userConfig.i18n.defaultLocale;
+-    // Memoize the instance and only re-initialize when either:
+-    // 1. The route changes (non-shallowly)
+-    // 2. Router locale changes
+-    // 3. UserConfig override changes
+-    var i18n = (0, _react.useMemo)(function () {
+-      var _userConfig$i18n;
+-      if (!_nextI18Next && !configOverride) return null;
+-      var userConfig = configOverride !== null && configOverride !== void 0 ? configOverride : _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.userConfig;
+-      if (!userConfig) {
+-        throw new Error('appWithTranslation was called without a next-i18next config');
+-      }
+-      if (!(userConfig !== null && userConfig !== void 0 && userConfig.i18n)) {
+-        throw new Error('appWithTranslation was called without config.i18n');
++    /**
++     * Memoize i18n instance and reuse it rather than creating new instance.
++     * When the locale or resources are changed after instance was created,
++     * we will update the instance in `useLayoutEffect` below.
++     */
++    var _useMemo = (0, _react.useMemo)(function () {
++        var _userConfig$i18n;
++        if (!_nextI18Next && !configOverride) return [null];
++        var userConfig = configOverride !== null && configOverride !== void 0 ? configOverride : _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.userConfig;
++        if (!userConfig) {
++          throw new Error('appWithTranslation was called without a next-i18next config');
++        }
++        if (!(userConfig !== null && userConfig !== void 0 && userConfig.i18n)) {
++          throw new Error('appWithTranslation was called without config.i18n');
++        }
++        if (!(userConfig !== null && userConfig !== void 0 && (_userConfig$i18n = userConfig.i18n) !== null && _userConfig$i18n !== void 0 && _userConfig$i18n.defaultLocale)) {
++          throw new Error('config.i18n does not include a defaultLocale property');
++        }
++        var _ref2 = _nextI18Next || {},
++          initialI18nStore = _ref2.initialI18nStore;
++        var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
++        if (!locale) locale = userConfig.i18n.defaultLocale;
++        var instance = instanceRef.current;
++        if (instance) {
++          return [instance, {
++            locale: locale,
++            resources: resources
++          }];
++        } else {
++          instance = (0, _createClient["default"])(_objectSpread(_objectSpread({}, (0, _createConfig.createConfig)(_objectSpread(_objectSpread({}, userConfig), {}, {
++            lng: locale
++          }))), {}, {
++            lng: locale,
++            ns: ns,
++            resources: resources
++          })).i18n;
++          exports.globalI18n = globalI18n = instance;
++          instanceRef.current = instance;
++          return [instance];
++        }
++      }, [_nextI18Next, locale, ns]),
++      i18n = _useMemo[0],
++      updateData = _useMemo[1];
++
++    /**
++     * Since calling some methods on existing i18n instance can cause state update in react,
++     * we need to call the methods in `useLayoutEffect` to prevent state update in render phase.
++     */
++    (0, _utils.useIsomorphicLayoutEffect)(function () {
++      if (!i18n || !updateData) {
++        return;
+       }
+-      if (!(userConfig !== null && userConfig !== void 0 && (_userConfig$i18n = userConfig.i18n) !== null && _userConfig$i18n !== void 0 && _userConfig$i18n.defaultLocale)) {
+-        throw new Error('config.i18n does not include a defaultLocale property');
++      var locale = updateData.locale,
++        resources = updateData.resources;
++      i18n.changeLanguage(locale);
++      if (resources) {
++        for (var _i = 0, _Object$keys = Object.keys(resources); _i < _Object$keys.length; _i++) {
++          var _locale = _Object$keys[_i];
++          for (var _i2 = 0, _Object$keys2 = Object.keys(resources[_locale]); _i2 < _Object$keys2.length; _i2++) {
++            var _ns = _Object$keys2[_i2];
++            i18n.addResourceBundle(_locale, _ns, resources[_locale][_ns], true, true);
++          }
++        }
+       }
+-      var _ref2 = _nextI18Next || {},
+-        initialI18nStore = _ref2.initialI18nStore;
+-      var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
+-      if (!locale) locale = userConfig.i18n.defaultLocale;
 -      var instance = (0, _createClient["default"])(_objectSpread(_objectSpread({}, (0, _createConfig.createConfig)(_objectSpread(_objectSpread({}, userConfig), {}, {
 -        lng: locale
 -      }))), {}, {
@@ -37,55 +122,88 @@ index c09e41a..4e9fea6 100644
 -        resources: resources
 -      })).i18n;
 -      exports.globalI18n = globalI18n = instance;
-+      var instance = instanceRef.current;
-+      if (instance) {
-+        instance.changeLanguage(locale);
-+        if (resources) {
-+          for (var _i = 0, _Object$keys = Object.keys(resources); _i < _Object$keys.length; _i++) {
-+            var _locale = _Object$keys[_i];
-+            for (var _i2 = 0, _Object$keys2 = Object.keys(resources[_locale]); _i2 < _Object$keys2.length; _i2++) {
-+              var _ns = _Object$keys2[_i2];
-+              instance.addResourceBundle(_locale, _ns, resources[_locale][_ns], true, true);
-+            }
-+          }
-+        }
-+      } else {
-+        instance = (0, _createClient["default"])(_objectSpread(_objectSpread({}, (0, _createConfig.createConfig)(_objectSpread(_objectSpread({}, userConfig), {}, {
-+          lng: locale
-+        }))), {}, {
-+          lng: locale,
-+          ns: ns,
-+          resources: resources
-+        })).i18n;
-+        exports.globalI18n = globalI18n = instance;
-+        instanceRef.current = instance;
-+      }
-       return instance;
+-      return instance;
 -    }, [_nextI18Next, locale, configOverride, ns]);
-+    }, [_nextI18Next, locale, ns]);
++    }, [i18n, updateData]);
      return i18n !== null ? __jsx(_reactI18next.I18nextProvider, {
        i18n: i18n
      }, __jsx(WrappedComponent, props)) : __jsx(WrappedComponent, (0, _extends2["default"])({
+diff --git a/node_modules/next-i18next/dist/commonjs/utils.js b/node_modules/next-i18next/dist/commonjs/utils.js
+index 1e55563..298f63c 100644
+--- a/node_modules/next-i18next/dist/commonjs/utils.js
++++ b/node_modules/next-i18next/dist/commonjs/utils.js
+@@ -5,7 +5,7 @@ var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefau
+ Object.defineProperty(exports, "__esModule", {
+   value: true
+ });
+-exports.unique = exports.getFallbackForLng = void 0;
++exports.useIsomorphicLayoutEffect = exports.unique = exports.getFallbackForLng = void 0;
+ var _toConsumableArray2 = _interopRequireDefault(require("@babel/runtime/helpers/toConsumableArray"));
+ var _typeof2 = _interopRequireDefault(require("@babel/runtime/helpers/typeof"));
+ require("core-js/modules/es.array.is-array.js");
+@@ -16,6 +16,7 @@ require("core-js/modules/es.array.iterator.js");
+ require("core-js/modules/es.object.to-string.js");
+ require("core-js/modules/es.set.js");
+ require("core-js/modules/web.dom-collections.iterator.js");
++var _react = require("react");
+ var getFallbackForLng = function getFallbackForLng(lng, fallbackLng) {
+   if (typeof fallbackLng === 'string') {
+     return [fallbackLng];
+@@ -37,4 +38,14 @@ exports.getFallbackForLng = getFallbackForLng;
+ var unique = function unique(list) {
+   return Array.from(new Set(list));
+ };
++
++/**
++ * This hook behaves like `useLayoutEffect` on the client,
++ * and `useEffect` on the server(no effect).
++ *
++ * Since using `useLayoutEffect` on the server cause warning messages in nextjs,
++ * this hook is workaround for that.
++ */
+ exports.unique = unique;
++var useIsomorphicLayoutEffect = typeof window !== 'undefined' ? _react.useLayoutEffect : _react.useEffect;
++exports.useIsomorphicLayoutEffect = useIsomorphicLayoutEffect;
+\ No newline at end of file
 diff --git a/node_modules/next-i18next/dist/es/appWithTranslation.js b/node_modules/next-i18next/dist/es/appWithTranslation.js
-index 92b3232..bf66a50 100644
+index 92b3232..f007b20 100644
 --- a/node_modules/next-i18next/dist/es/appWithTranslation.js
 +++ b/node_modules/next-i18next/dist/es/appWithTranslation.js
-@@ -1,5 +1,5 @@
+@@ -1,9 +1,10 @@
  function _extends() { _extends = Object.assign ? Object.assign.bind() : function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; }; return _extends.apply(this, arguments); }
 -import React, { useMemo } from 'react';
 +import React, { useMemo, useRef } from 'react';
  import hoistNonReactStatics from 'hoist-non-react-statics';
  import { I18nextProvider } from 'react-i18next';
  import { createConfig } from './config/createConfig';
-@@ -13,6 +13,7 @@ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
+ import createClient from './createClient';
++import { useIsomorphicLayoutEffect } from './utils';
+ export { Trans, useTranslation, withTranslation } from 'react-i18next';
+ export let globalI18n = null;
+ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
+@@ -13,13 +14,15 @@ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
      } = props.pageProps || {}; // pageProps may be undefined on strange setups, i.e. https://github.com/i18next/next-i18next/issues/2109
      let locale = _nextI18Next?.initialLocale ?? props?.router?.locale;
      const ns = _nextI18Next?.ns;
 +    const instanceRef = useRef(null);
  
-     // Memoize the instance and only re-initialize when either:
-     // 1. The route changes (non-shallowly)
-@@ -35,18 +36,31 @@ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
+-    // Memoize the instance and only re-initialize when either:
+-    // 1. The route changes (non-shallowly)
+-    // 2. Router locale changes
+-    // 3. UserConfig override changes
+-    const i18n = useMemo(() => {
+-      if (!_nextI18Next && !configOverride) return null;
++    /**
++     * Memoize i18n instance and reuse it rather than creating new instance.
++     * When the locale or resources are changed after instance was created,
++     * we will update the instance in `useLayoutEffect` below.
++     */
++    const [i18n, updateData] = useMemo(() => {
++      if (!_nextI18Next && !configOverride) return [null];
+       const userConfig = configOverride ?? _nextI18Next?.userConfig;
+       if (!userConfig) {
+         throw new Error('appWithTranslation was called without a next-i18next config');
+@@ -35,18 +38,49 @@ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
        } = _nextI18Next || {};
        const resources = configOverride?.resources ? configOverride.resources : initialI18nStore;
        if (!locale) locale = userConfig.i18n.defaultLocale;
@@ -96,19 +214,12 @@ index 92b3232..bf66a50 100644
 -        }),
 -        lng: locale,
 -        ns,
--        resources
--      }).i18n;
--      globalI18n = instance;
 +      let instance = instanceRef.current;
 +      if (instance) {
-+        instance.changeLanguage(locale);
-+        if (resources) {
-+          for (const locale of Object.keys(resources)) {
-+            for (const ns of Object.keys(resources[locale])) {
-+              instance.addResourceBundle(locale, ns, resources[locale][ns], true, true);
-+            }
-+          }
-+        }
++        return [instance, {
++          locale,
++          resources
++        }];
 +      } else {
 +        instance = createClient({
 +          ...createConfig({
@@ -121,18 +232,66 @@ index 92b3232..bf66a50 100644
 +        }).i18n;
 +        globalI18n = instance;
 +        instanceRef.current = instance;
++        return [instance];
 +      }
-       return instance;
--    }, [_nextI18Next, locale, configOverride, ns]);
 +    }, [_nextI18Next, locale, ns]);
++
++    /**
++     * Since calling some methods on existing i18n instance can cause state update in react,
++     * we need to call the methods in `useLayoutEffect` to prevent state update in render phase.
++     */
++    useIsomorphicLayoutEffect(() => {
++      if (!i18n || !updateData) {
++        return;
++      }
++      const {
++        locale,
+         resources
+-      }).i18n;
+-      globalI18n = instance;
+-      return instance;
+-    }, [_nextI18Next, locale, configOverride, ns]);
++      } = updateData;
++      i18n.changeLanguage(locale);
++      if (resources) {
++        for (const locale of Object.keys(resources)) {
++          for (const ns of Object.keys(resources[locale])) {
++            i18n.addResourceBundle(locale, ns, resources[locale][ns], true, true);
++          }
++        }
++      }
++    }, [i18n, updateData]);
      return i18n !== null ? /*#__PURE__*/React.createElement(I18nextProvider, {
        i18n: i18n
      }, /*#__PURE__*/React.createElement(WrappedComponent, props)) : /*#__PURE__*/React.createElement(WrappedComponent, _extends({
+diff --git a/node_modules/next-i18next/dist/es/utils.js b/node_modules/next-i18next/dist/es/utils.js
+index c9f5e08..d733778 100644
+--- a/node_modules/next-i18next/dist/es/utils.js
++++ b/node_modules/next-i18next/dist/es/utils.js
+@@ -1,3 +1,4 @@
++import { useLayoutEffect, useEffect } from 'react';
+ export const getFallbackForLng = (lng, fallbackLng) => {
+   if (typeof fallbackLng === 'string') {
+     return [fallbackLng];
+@@ -16,3 +17,12 @@ export const getFallbackForLng = (lng, fallbackLng) => {
+   return [];
+ };
+ export const unique = list => Array.from(new Set(list));
++
++/**
++ * This hook behaves like `useLayoutEffect` on the client,
++ * and `useEffect` on the server(no effect).
++ *
++ * Since using `useLayoutEffect` on the server cause warning messages in nextjs,
++ * this hook is workaround for that.
++ */
++export const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+\ No newline at end of file
 diff --git a/node_modules/next-i18next/dist/esm/appWithTranslation.js b/node_modules/next-i18next/dist/esm/appWithTranslation.js
-index 1e40c87..80096c2 100644
+index 1e40c87..8d092e8 100644
 --- a/node_modules/next-i18next/dist/esm/appWithTranslation.js
 +++ b/node_modules/next-i18next/dist/esm/appWithTranslation.js
-@@ -3,7 +3,7 @@ import _defineProperty from "@babel/runtime/helpers/defineProperty";
+@@ -3,11 +3,12 @@ import _defineProperty from "@babel/runtime/helpers/defineProperty";
  var __jsx = React.createElement;
  function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
  function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = null != arguments[i] ? arguments[i] : {}; i % 2 ? ownKeys(Object(source), !0).forEach(function (key) { _defineProperty(target, key, source[key]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } return target; }
@@ -141,18 +300,100 @@ index 1e40c87..80096c2 100644
  import hoistNonReactStatics from 'hoist-non-react-statics';
  import { I18nextProvider } from 'react-i18next';
  import { createConfig } from './config/createConfig';
-@@ -18,6 +18,7 @@ export var appWithTranslation = function appWithTranslation(WrappedComponent) {
+ import createClient from './createClient';
++import { useIsomorphicLayoutEffect } from './utils';
+ export { Trans, useTranslation, withTranslation } from 'react-i18next';
+ export var globalI18n = null;
+ export var appWithTranslation = function appWithTranslation(WrappedComponent) {
+@@ -18,38 +19,73 @@ export var appWithTranslation = function appWithTranslation(WrappedComponent) {
        _nextI18Next = _ref._nextI18Next; // pageProps may be undefined on strange setups, i.e. https://github.com/i18next/next-i18next/issues/2109
      var locale = (_nextI18Next$initialL = _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.initialLocale) !== null && _nextI18Next$initialL !== void 0 ? _nextI18Next$initialL : props === null || props === void 0 ? void 0 : (_props$router = props.router) === null || _props$router === void 0 ? void 0 : _props$router.locale;
      var ns = _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.ns;
 +    var instanceRef = useRef(null);
  
-     // Memoize the instance and only re-initialize when either:
-     // 1. The route changes (non-shallowly)
-@@ -40,16 +41,31 @@ export var appWithTranslation = function appWithTranslation(WrappedComponent) {
-         initialI18nStore = _ref2.initialI18nStore;
-       var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
-       if (!locale) locale = userConfig.i18n.defaultLocale;
+-    // Memoize the instance and only re-initialize when either:
+-    // 1. The route changes (non-shallowly)
+-    // 2. Router locale changes
+-    // 3. UserConfig override changes
+-    var i18n = useMemo(function () {
+-      var _userConfig$i18n;
+-      if (!_nextI18Next && !configOverride) return null;
+-      var userConfig = configOverride !== null && configOverride !== void 0 ? configOverride : _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.userConfig;
+-      if (!userConfig) {
+-        throw new Error('appWithTranslation was called without a next-i18next config');
+-      }
+-      if (!(userConfig !== null && userConfig !== void 0 && userConfig.i18n)) {
+-        throw new Error('appWithTranslation was called without config.i18n');
++    /**
++     * Memoize i18n instance and reuse it rather than creating new instance.
++     * When the locale or resources are changed after instance was created,
++     * we will update the instance in `useLayoutEffect` below.
++     */
++    var _useMemo = useMemo(function () {
++        var _userConfig$i18n;
++        if (!_nextI18Next && !configOverride) return [null];
++        var userConfig = configOverride !== null && configOverride !== void 0 ? configOverride : _nextI18Next === null || _nextI18Next === void 0 ? void 0 : _nextI18Next.userConfig;
++        if (!userConfig) {
++          throw new Error('appWithTranslation was called without a next-i18next config');
++        }
++        if (!(userConfig !== null && userConfig !== void 0 && userConfig.i18n)) {
++          throw new Error('appWithTranslation was called without config.i18n');
++        }
++        if (!(userConfig !== null && userConfig !== void 0 && (_userConfig$i18n = userConfig.i18n) !== null && _userConfig$i18n !== void 0 && _userConfig$i18n.defaultLocale)) {
++          throw new Error('config.i18n does not include a defaultLocale property');
++        }
++        var _ref2 = _nextI18Next || {},
++          initialI18nStore = _ref2.initialI18nStore;
++        var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
++        if (!locale) locale = userConfig.i18n.defaultLocale;
++        var instance = instanceRef.current;
++        if (instance) {
++          return [instance, {
++            locale: locale,
++            resources: resources
++          }];
++        } else {
++          instance = createClient(_objectSpread(_objectSpread({}, createConfig(_objectSpread(_objectSpread({}, userConfig), {}, {
++            lng: locale
++          }))), {}, {
++            lng: locale,
++            ns: ns,
++            resources: resources
++          })).i18n;
++          globalI18n = instance;
++          instanceRef.current = instance;
++          return [instance];
++        }
++      }, [_nextI18Next, locale, ns]),
++      i18n = _useMemo[0],
++      updateData = _useMemo[1];
++
++    /**
++     * Since calling some methods on existing i18n instance can cause state update in react,
++     * we need to call the methods in `useLayoutEffect` to prevent state update in render phase.
++     */
++    useIsomorphicLayoutEffect(function () {
++      if (!i18n || !updateData) {
++        return;
+       }
+-      if (!(userConfig !== null && userConfig !== void 0 && (_userConfig$i18n = userConfig.i18n) !== null && _userConfig$i18n !== void 0 && _userConfig$i18n.defaultLocale)) {
+-        throw new Error('config.i18n does not include a defaultLocale property');
++      var locale = updateData.locale,
++        resources = updateData.resources;
++      i18n.changeLanguage(locale);
++      if (resources) {
++        for (var _i = 0, _Object$keys = Object.keys(resources); _i < _Object$keys.length; _i++) {
++          var _locale = _Object$keys[_i];
++          for (var _i2 = 0, _Object$keys2 = Object.keys(resources[_locale]); _i2 < _Object$keys2.length; _i2++) {
++            var _ns = _Object$keys2[_i2];
++            i18n.addResourceBundle(_locale, _ns, resources[_locale][_ns], true, true);
++          }
++        }
+       }
+-      var _ref2 = _nextI18Next || {},
+-        initialI18nStore = _ref2.initialI18nStore;
+-      var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
+-      if (!locale) locale = userConfig.i18n.defaultLocale;
 -      var instance = createClient(_objectSpread(_objectSpread({}, createConfig(_objectSpread(_objectSpread({}, userConfig), {}, {
 -        lng: locale
 -      }))), {}, {
@@ -161,32 +402,34 @@ index 1e40c87..80096c2 100644
 -        resources: resources
 -      })).i18n;
 -      globalI18n = instance;
-+      var instance = instanceRef.current;
-+      if (instance) {
-+        instance.changeLanguage(locale);
-+        if (resources) {
-+          for (var _i = 0, _Object$keys = Object.keys(resources); _i < _Object$keys.length; _i++) {
-+            var _locale = _Object$keys[_i];
-+            for (var _i2 = 0, _Object$keys2 = Object.keys(resources[_locale]); _i2 < _Object$keys2.length; _i2++) {
-+              var _ns = _Object$keys2[_i2];
-+              instance.addResourceBundle(_locale, _ns, resources[_locale][_ns], true, true);
-+            }
-+          }
-+        }
-+      } else {
-+        instance = createClient(_objectSpread(_objectSpread({}, createConfig(_objectSpread(_objectSpread({}, userConfig), {}, {
-+          lng: locale
-+        }))), {}, {
-+          lng: locale,
-+          ns: ns,
-+          resources: resources
-+        })).i18n;
-+        globalI18n = instance;
-+        instanceRef.current = instance;
-+      }
-       return instance;
+-      return instance;
 -    }, [_nextI18Next, locale, configOverride, ns]);
-+    }, [_nextI18Next, locale, ns]);
++    }, [i18n, updateData]);
      return i18n !== null ? __jsx(I18nextProvider, {
        i18n: i18n
      }, __jsx(WrappedComponent, props)) : __jsx(WrappedComponent, _extends({
+diff --git a/node_modules/next-i18next/dist/esm/utils.js b/node_modules/next-i18next/dist/esm/utils.js
+index 0d1d892..1197af2 100644
+--- a/node_modules/next-i18next/dist/esm/utils.js
++++ b/node_modules/next-i18next/dist/esm/utils.js
+@@ -1,5 +1,6 @@
+ import _toConsumableArray from "@babel/runtime/helpers/toConsumableArray";
+ import _typeof from "@babel/runtime/helpers/typeof";
++import { useLayoutEffect, useEffect } from 'react';
+ export var getFallbackForLng = function getFallbackForLng(lng, fallbackLng) {
+   if (typeof fallbackLng === 'string') {
+     return [fallbackLng];
+@@ -20,3 +21,12 @@ export var getFallbackForLng = function getFallbackForLng(lng, fallbackLng) {
+ export var unique = function unique(list) {
+   return Array.from(new Set(list));
+ };
++
++/**
++ * This hook behaves like `useLayoutEffect` on the client,
++ * and `useEffect` on the server(no effect).
++ *
++ * Since using `useLayoutEffect` on the server cause warning messages in nextjs,
++ * this hook is workaround for that.
++ */
++export var useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+\ No newline at end of file
