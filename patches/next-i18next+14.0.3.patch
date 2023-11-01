@@ -1,5 +1,5 @@
 diff --git a/node_modules/next-i18next/dist/commonjs/appWithTranslation.js b/node_modules/next-i18next/dist/commonjs/appWithTranslation.js
-index c09e41a..8489a0d 100644
+index c09e41a..4e9fea6 100644
 --- a/node_modules/next-i18next/dist/commonjs/appWithTranslation.js
 +++ b/node_modules/next-i18next/dist/commonjs/appWithTranslation.js
 @@ -1,6 +1,5 @@
@@ -25,7 +25,7 @@ index c09e41a..8489a0d 100644
  
      // Memoize the instance and only re-initialize when either:
      // 1. The route changes (non-shallowly)
-@@ -82,16 +83,30 @@ var appWithTranslation = function appWithTranslation(WrappedComponent) {
+@@ -82,16 +83,31 @@ var appWithTranslation = function appWithTranslation(WrappedComponent) {
          initialI18nStore = _ref2.initialI18nStore;
        var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
        if (!locale) locale = userConfig.i18n.defaultLocale;
@@ -39,6 +39,7 @@ index c09e41a..8489a0d 100644
 -      exports.globalI18n = globalI18n = instance;
 +      var instance = instanceRef.current;
 +      if (instance) {
++        instance.changeLanguage(locale);
 +        if (resources) {
 +          for (var _i = 0, _Object$keys = Object.keys(resources); _i < _Object$keys.length; _i++) {
 +            var _locale = _Object$keys[_i];
@@ -66,7 +67,7 @@ index c09e41a..8489a0d 100644
        i18n: i18n
      }, __jsx(WrappedComponent, props)) : __jsx(WrappedComponent, (0, _extends2["default"])({
 diff --git a/node_modules/next-i18next/dist/es/appWithTranslation.js b/node_modules/next-i18next/dist/es/appWithTranslation.js
-index 92b3232..ee67f88 100644
+index 92b3232..bf66a50 100644
 --- a/node_modules/next-i18next/dist/es/appWithTranslation.js
 +++ b/node_modules/next-i18next/dist/es/appWithTranslation.js
 @@ -1,5 +1,5 @@
@@ -81,10 +82,10 @@ index 92b3232..ee67f88 100644
      let locale = _nextI18Next?.initialLocale ?? props?.router?.locale;
      const ns = _nextI18Next?.ns;
 +    const instanceRef = useRef(null);
-
+ 
      // Memoize the instance and only re-initialize when either:
      // 1. The route changes (non-shallowly)
-@@ -35,18 +36,30 @@ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
+@@ -35,18 +36,31 @@ export const appWithTranslation = (WrappedComponent, configOverride = null) => {
        } = _nextI18Next || {};
        const resources = configOverride?.resources ? configOverride.resources : initialI18nStore;
        if (!locale) locale = userConfig.i18n.defaultLocale;
@@ -100,6 +101,7 @@ index 92b3232..ee67f88 100644
 -      globalI18n = instance;
 +      let instance = instanceRef.current;
 +      if (instance) {
++        instance.changeLanguage(locale);
 +        if (resources) {
 +          for (const locale of Object.keys(resources)) {
 +            for (const ns of Object.keys(resources[locale])) {
@@ -127,7 +129,7 @@ index 92b3232..ee67f88 100644
        i18n: i18n
      }, /*#__PURE__*/React.createElement(WrappedComponent, props)) : /*#__PURE__*/React.createElement(WrappedComponent, _extends({
 diff --git a/node_modules/next-i18next/dist/esm/appWithTranslation.js b/node_modules/next-i18next/dist/esm/appWithTranslation.js
-index 1e40c87..79a7586 100644
+index 1e40c87..80096c2 100644
 --- a/node_modules/next-i18next/dist/esm/appWithTranslation.js
 +++ b/node_modules/next-i18next/dist/esm/appWithTranslation.js
 @@ -3,7 +3,7 @@ import _defineProperty from "@babel/runtime/helpers/defineProperty";
@@ -147,7 +149,7 @@ index 1e40c87..79a7586 100644
  
      // Memoize the instance and only re-initialize when either:
      // 1. The route changes (non-shallowly)
-@@ -40,16 +41,30 @@ export var appWithTranslation = function appWithTranslation(WrappedComponent) {
+@@ -40,16 +41,31 @@ export var appWithTranslation = function appWithTranslation(WrappedComponent) {
          initialI18nStore = _ref2.initialI18nStore;
        var resources = configOverride !== null && configOverride !== void 0 && configOverride.resources ? configOverride.resources : initialI18nStore;
        if (!locale) locale = userConfig.i18n.defaultLocale;
@@ -161,6 +163,7 @@ index 1e40c87..79a7586 100644
 -      globalI18n = instance;
 +      var instance = instanceRef.current;
 +      if (instance) {
++        instance.changeLanguage(locale);
 +        if (resources) {
 +          for (var _i = 0, _Object$keys = Object.keys(resources); _i < _Object$keys.length; _i++) {
 +            var _locale = _Object$keys[_i];
